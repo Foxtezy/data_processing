@@ -88,6 +88,7 @@
 
 
 
+
 (defn notify-msg
   "A message that can be sent to a factory worker to notify that the provided 'amount' of 'ware's are
    just put to the 'storage-atom'."
@@ -139,16 +140,20 @@
 (def ore-mine (source 2 1000 ore-storage))
 
 ;;;runs sources and the whole process as the result
-;;;(defn start []
-;;;  (.start ore-mine)
-;;;  (.start lumber-mill))
+(defn start []
+  (.start ore-mine)
+  (.start lumber-mill))
 
 ;;;stopes running process
 ;;;recomplile the code after it to reset all the process
 (defn stop []
- (.stop ore-mine)
-  (.stop lumber-mill))
+ (.interrupt ore-mine)
+  (.interrupt lumber-mill))
 
+(do (agent-error (gears-factory :worker))
+    (agent-error (metal-storage :worker))
+    (start) 
+    (Thread/sleep 60000)
+    (stop))
 ;;;This could be used to aquire errors from workers
-;;;(agent-error (gears-factory :worker))
-;;;(agent-error (metal-storage :worker))
+
