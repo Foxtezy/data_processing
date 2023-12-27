@@ -273,15 +273,15 @@ public class PeopleParser {
         System.out.println("=== Normalizing ===");
 
         // fill up records with known id
-        for (Person i : data) {
-            if (i.id != null) {
-                if (id_records.containsKey(i.id)) {
-                    id_records.get(i.id).merge(i);
+        for (Person p : data) {
+            if (p.id != null) {
+                if (id_records.containsKey(p.id)) {
+                    id_records.get(p.id).merge(p);
                 } else {
-                    id_records.put(i.id, i);
+                    id_records.put(p.id, p);
                 }
             } else {
-                temp_records.add(i);
+                temp_records.add(p);
             }
         }
 
@@ -302,25 +302,48 @@ public class PeopleParser {
                 Person foundPerson = found.get(0);
                 foundPerson.merge(p);
                 id_records.replace(foundPerson.id, foundPerson);
+            } else {
+                temp_records.add(p);
             }
         }
 
+        data = temp_records;
+        temp_records = new ArrayList<>();
 
         for (Person person : data) {
-            if (person.siblingsId != null) {
-                HashSet<String> siblings = new HashSet<>(person.siblingsId);
-                List<Person> found = findInRecords(
-                        x -> {
-                            HashSet<String> xsib = new HashSet<>(x.siblingsId);
-                            xsib.retainAll(siblings);
-                            return !xsib.isEmpty();
-                        }, id_records.values()
-                );
+            if (!person.siblingsId.isEmpty()) {
+                List<Person> found_namesakes =  findInRecords(x -> x.firstName.equals(person.firstName) && x.lastName.equals(person.lastName),
+                        id_records.values());
+                List<Person> found = found_namesakes.stream().filter(f -> f.siblingsCount != null && f.siblingsCount > f.siblingsId.size() && !f.siblingsId.containsAll(person.siblingsId)).toList();
                 if (found.size() == 1) {
-                    found.get(0).merge(person);
+                    Person foundPerson = found.get(0);
+                    foundPerson.merge(person);
+                    id_records.replace(foundPerson.id, foundPerson);
                 } else {
                     temp_records.add(person);
                 }
+            } else {
+                temp_records.add(person);
+            }
+        }
+
+        data = temp_records;
+        temp_records = new ArrayList<>();
+
+        for (Person person : data) {
+            if (!person.childrenId.isEmpty()) {
+                List<Person> found_namesakes =  findInRecords(x -> x.firstName.equals(person.firstName) && x.lastName.equals(person.lastName),
+                        id_records.values());
+                List<Person> found = found_namesakes.stream().filter(f -> f.childrenCount != null && f.childrenCount > f.childrenId.size() && !f.childrenId.containsAll(person.childrenId)).toList();
+                if (found.size() == 1) {
+                    Person foundPerson = found.get(0);
+                    foundPerson.merge(person);
+                    id_records.replace(foundPerson.id, foundPerson);
+                } else {
+                    temp_records.add(person);
+                }
+            } else {
+                temp_records.add(person);
             }
         }
 
