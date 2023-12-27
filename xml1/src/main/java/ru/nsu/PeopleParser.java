@@ -6,12 +6,10 @@ import javax.xml.stream.XMLStreamReader;
 import javax.xml.stream.XMLStreamConstants;
 import java.io.InputStream;
 import java.util.*;
-import java.util.function.Predicate;
-import java.util.stream.Collectors;
 
 public class PeopleParser {
 
-    public ArrayList<Person> parse(InputStream stream) throws XMLStreamException {
+    public HashMap<String, Person> parse(InputStream stream) throws XMLStreamException {
         ArrayList<Person> data = new ArrayList<>();
 
         XMLInputFactory streamFactory = XMLInputFactory.newInstance();
@@ -19,8 +17,6 @@ public class PeopleParser {
 
         int peopleCount = 0;
         Person person = null;
-
-        System.out.println("=== Start parsing... ===");
 
         while (reader.hasNext()) {
             reader.next();
@@ -34,7 +30,6 @@ public class PeopleParser {
                             for (int i = 0; i < reader.getAttributeCount(); i++) {
                                 if (reader.getAttributeLocalName(i).equals("count")) {
                                     peopleCount = Integer.parseInt(reader.getAttributeValue(i));
-                                    System.out.println("Total people count: " + peopleCount);
                                 } else {
                                     System.out.println("Unknown attribute in <people>");
                                 }
@@ -92,7 +87,8 @@ public class PeopleParser {
                                 }
                             }
                         }
-                        case "fullname", "children" -> {}
+                        case "fullname", "children" -> {
+                        }
                         case "first" -> {
                             reader.next();
                             assert person != null;
@@ -186,7 +182,7 @@ public class PeopleParser {
                                     assert person != null;
                                     person.siblingsCount = Integer.parseInt(reader.getAttributeValue(i).trim());
                                 } else {
-                                    System.out.println(reader.getLocalName() + " has unknown attribute: " + reader.getAttributeLocalName(i));
+                                    System.out.println("Sibling number has unknown attribute: " + reader.getAttributeLocalName(i));
                                 }
                             }
                         }
@@ -266,105 +262,101 @@ public class PeopleParser {
         return normalize(data, peopleCount);
     }
 
-    private ArrayList<Person> normalize(ArrayList<Person> data, Integer peopleCount) {
-        HashMap<String, Person> id_records = new HashMap<>();
-        ArrayList<Person> temp_records = new ArrayList<>();
+    private HashMap<String, Person> normalize(ArrayList<Person> data, Integer peopleCount) {
+        HashMap<String, Person> id_peoples = new HashMap<>();
+        ArrayList<Person> remaining_data = new ArrayList<>();
 
-        System.out.println("=== Normalizing ===");
+        fillUpKnownIdPeoples(data, id_peoples, remaining_data, peopleCount);
 
-        // fill up records with known id
-        for (Person p : data) {
-            if (p.id != null) {
-                if (id_records.containsKey(p.id)) {
-                    id_records.get(p.id).merge(p);
-                } else {
-                    id_records.put(p.id, p);
-                }
-            } else {
-                temp_records.add(p);
-            }
-        }
+        data = remaining_data;
+        remaining_data = new ArrayList<>();
+        mergeNullIdPeopleWithoutNamesakes(data, id_peoples, remaining_data);
 
-        // check that number of ids is equal to number of people
-        assert id_records.size() == peopleCount;
-        // check that all id records have both first and last names
-        assert id_records.values().parallelStream().allMatch(x -> x.firstName != null && x.lastName != null);
-        assert temp_records.parallelStream().allMatch(x -> x.firstName != null && x.lastName != null);
+        data = remaining_data;
+        remaining_data = new ArrayList<>();
+        mergeSiblingsOfNamesakes(data, id_peoples, remaining_data);
 
-        data = temp_records;
-        temp_records = new ArrayList<>();
+        data = remaining_data;
+        remaining_data = new ArrayList<>();
+        mergeChildrenOfNamesakes(data, id_peoples, remaining_data);
 
-        // merge all people that hasn't namesakes
-        for (Person p : data) {
-            List<Person> found =  findInRecords(x -> x.firstName.equals(p.firstName) && x.lastName.equals(p.lastName),
-                                            id_records.values());
-            if (found.size() == 1) {
-                Person foundPerson = found.get(0);
-                foundPerson.merge(p);
-                id_records.replace(foundPerson.id, foundPerson);
-            } else {
-                temp_records.add(p);
-            }
-        }
+        System.out.println("PREPARING");
 
-        data = temp_records;
-        temp_records = new ArrayList<>();
+        childrenPrepare(id_peoples);
+        siblingsPrepare(id_peoples);
+        genderPrepare(id_peoples);
 
-        for (Person person : data) {
-            if (!person.siblingsId.isEmpty()) {
-                List<Person> found_namesakes =  findInRecords(x -> x.firstName.equals(person.firstName) && x.lastName.equals(person.lastName),
-                        id_records.values());
-                List<Person> found = found_namesakes.stream().filter(f -> f.siblingsCount != null && f.siblingsCount > f.siblingsId.size() && !f.siblingsId.containsAll(person.siblingsId)).toList();
-                if (found.size() == 1) {
-                    Person foundPerson = found.get(0);
-                    foundPerson.merge(person);
-                    id_records.replace(foundPerson.id, foundPerson);
-                } else {
-                    temp_records.add(person);
-                }
-            } else {
-                temp_records.add(person);
-            }
-        }
+        return id_peoples;
+    }
 
-        data = temp_records;
-        temp_records = new ArrayList<>();
-
+    private void mergeChildrenOfNamesakes(ArrayList<Person> data, HashMap<String, Person> id_peoples, ArrayList<Person> remaining_data) {
         for (Person person : data) {
             if (!person.childrenId.isEmpty()) {
-                List<Person> found_namesakes =  findInRecords(x -> x.firstName.equals(person.firstName) && x.lastName.equals(person.lastName),
-                        id_records.values());
+                List<Person> found_namesakes = id_peoples.values().parallelStream().filter(x -> x.firstName.equals(person.firstName) && x.lastName.equals(person.lastName)).toList();
                 List<Person> found = found_namesakes.stream().filter(f -> f.childrenCount != null && f.childrenCount > f.childrenId.size() && !f.childrenId.containsAll(person.childrenId)).toList();
                 if (found.size() == 1) {
                     Person foundPerson = found.get(0);
                     foundPerson.merge(person);
-                    id_records.replace(foundPerson.id, foundPerson);
                 } else {
-                    temp_records.add(person);
+                    remaining_data.add(person);
                 }
             } else {
-                temp_records.add(person);
+                remaining_data.add(person);
             }
         }
-
-        System.out.println("Normalized!!!");
-
-        childrenAssertion(id_records);
-        siblingsAssertion(id_records);
-        genderAssertion(id_records);
-
-        return new ArrayList<>(id_records.values());
     }
 
-    private void childrenAssertion(HashMap<String, Person> id_records) {
-        System.out.println("=== Children assertion ===");
-        for (String key : id_records.keySet()) {
-            Person p = id_records.get(key);
+    private void mergeSiblingsOfNamesakes(ArrayList<Person> data, HashMap<String, Person> id_peoples, ArrayList<Person> remaining_data) {
+        for (Person person : data) {
+            if (!person.siblingsId.isEmpty()) {
+                List<Person> found_namesakes = id_peoples.values().parallelStream().filter(x -> x.firstName.equals(person.firstName) && x.lastName.equals(person.lastName)).toList();
+                List<Person> found = found_namesakes.stream().filter(f -> f.siblingsCount != null && f.siblingsCount > f.siblingsId.size() && !f.siblingsId.containsAll(person.siblingsId)).toList();
+                if (found.size() == 1) {
+                    Person foundPerson = found.get(0);
+                    foundPerson.merge(person);
+                } else {
+                    remaining_data.add(person);
+                }
+            } else {
+                remaining_data.add(person);
+            }
+        }
+    }
+
+    private void mergeNullIdPeopleWithoutNamesakes(ArrayList<Person> data, HashMap<String, Person> id_peoples, ArrayList<Person> remaining_data) {
+        for (Person p : data) {
+            List<Person> found = id_peoples.values().parallelStream().filter(x -> x.firstName.equals(p.firstName) && x.lastName.equals(p.lastName)).toList();
+            if (found.size() == 1) {
+                Person foundPerson = found.get(0);
+                foundPerson.merge(p);
+            } else {
+                remaining_data.add(p);
+            }
+        }
+    }
+
+    private static void fillUpKnownIdPeoples(ArrayList<Person> data, HashMap<String, Person> id_peoples, ArrayList<Person> remaining_peoples, Integer peopleCount) {
+        for (Person p : data) {
+            if (p.id != null) {
+                if (id_peoples.containsKey(p.id)) {
+                    id_peoples.get(p.id).merge(p);
+                } else {
+                    id_peoples.put(p.id, p);
+                }
+            } else {
+                remaining_peoples.add(p);
+            }
+        }
+        assert id_peoples.size() == peopleCount;
+    }
+
+    private void childrenPrepare(HashMap<String, Person> id_peoples) {
+        for (String key : id_peoples.keySet()) {
+            Person p = id_peoples.get(key);
             p.childrenId.addAll(p.sonsId);
             p.childrenId.addAll(p.daughtersId);
             for (String s : p.daughtersName) {
-                List<Person> f = findInRecords(x -> s.equals(x.firstName + " " + x.lastName),
-                        id_records.values());
+                List<Person> f = id_peoples.values().parallelStream().filter(x -> s.equals(x.firstName + " " + x.lastName)).toList();
                 if (!f.isEmpty()) {
                     Person daughter = f.get(0);
                     if (daughter != null) {
@@ -373,8 +365,7 @@ public class PeopleParser {
                 }
             }
             for (String s : p.sonsName) {
-                List<Person> f = findInRecords(x -> s.equals(x.firstName + " " + x.lastName),
-                        id_records.values());
+                List<Person> f = id_peoples.values().parallelStream().filter(x -> s.equals(x.firstName + " " + x.lastName)).toList();
                 if (!f.isEmpty()) {
                     Person son = f.get(0);
                     if (son != null) {
@@ -383,8 +374,7 @@ public class PeopleParser {
                 }
             }
             for (String s : p.childrenName) {
-                List<Person> f = findInRecords(x -> s.equals(x.firstName + " " + x.lastName),
-                        id_records.values());
+                List<Person> f = id_peoples.values().parallelStream().filter(x -> s.equals(x.firstName + " " + x.lastName)).toList();
                 if (!f.isEmpty()) {
                     Person child = f.get(0);
                     if (child != null) {
@@ -392,30 +382,16 @@ public class PeopleParser {
                     }
                 }
             }
-
-            if (p.childrenCount != null) {
-                if (!p.childrenCount.equals(p.childrenId.size())) {
-                    System.out.println(p.firstName + " " + p.lastName + " " + p.childrenId.size() + " " + p.childrenCount);
-                }
-                try {
-                    assert p.childrenId.size() == p.childrenCount;
-                } catch (AssertionError e) {
-                    System.out.println("CHILDREN ASSERTION FAILED: in " + p);
-                }
-            }
         }
-        System.out.println("Children assertion finished!");
     }
 
-    private void siblingsAssertion(HashMap<String, Person> id_records) {
-        System.out.println("=== Siblings assertion ===");
-        for (String key : id_records.keySet()) {
-            Person p = id_records.get(key);
+    private void siblingsPrepare(HashMap<String, Person> id_peoples) {
+        for (String key : id_peoples.keySet()) {
+            Person p = id_peoples.get(key);
             p.siblingsId.addAll(p.brothersId);
             p.siblingsId.addAll(p.sistersId);
             for (String s : p.sistersName) {
-                List<Person> f = findInRecords(x -> s.equals(x.firstName + " " + x.lastName),
-                        id_records.values());
+                List<Person> f = id_peoples.values().parallelStream().filter(x -> s.equals(x.firstName + " " + x.lastName)).toList();
                 if (!f.isEmpty()) {
                     Person sister = f.get(0);
                     if (sister != null) {
@@ -424,8 +400,7 @@ public class PeopleParser {
                 }
             }
             for (String s : p.brothersName) {
-                List<Person> f = findInRecords(x -> s.equals(x.firstName + " " + x.lastName),
-                        id_records.values());
+                List<Person> f = id_peoples.values().parallelStream().filter(x -> s.equals(x.firstName + " " + x.lastName)).toList();
                 if (!f.isEmpty()) {
                     Person brother = f.get(0);
                     if (brother != null) {
@@ -434,8 +409,7 @@ public class PeopleParser {
                 }
             }
             for (String s : p.siblingsName) {
-                List<Person> f = findInRecords(x -> s.equals(x.firstName + " " + x.lastName),
-                        id_records.values());
+                List<Person> f = id_peoples.values().parallelStream().filter(x -> s.equals(x.firstName + " " + x.lastName)).toList();
                 if (!f.isEmpty()) {
                     Person sibling = f.get(0);
                     if (sibling != null) {
@@ -443,66 +417,37 @@ public class PeopleParser {
                     }
                 }
             }
-
-            if (p.siblingsCount != null) {
-                try {
-                    assert p.siblingsId.size() == p.siblingsCount;
-                } catch (AssertionError e) {
-                    System.out.println("SIBLINGS ASSERTION FAILED: in " + p);
-                }
-            }
         }
-        System.out.println("Siblings assertion finished!");
     }
 
-    private void genderAssertion(HashMap<String, Person> id_records) {
-        System.out.println("=== Gender assertion ===");
-        for (var p : id_records.values()) {
+    private void genderPrepare(HashMap<String, Person> id_peoples) {
+        for (var p : id_peoples.values()) {
             if (p.gender == null) {
                 if (p.wifeId != null || p.wifeName != null) {
                     p.gender = "M";
-                }
-                else if (p.husbandId != null || p.husbandName != null) {
+                } else if (p.husbandId != null || p.husbandName != null) {
                     p.gender = "F";
                 }
-                else if (p.spouseId != null) {
-                    Person pp = id_records.get(p.spouseId);
+            }
+        }
+        for (var p : id_peoples.values()) {
+            if (p.gender == null) {
+                if (p.spouseId != null) {
+                    Person pp = id_peoples.get(p.spouseId);
                     if (pp.gender != null) {
                         if (pp.gender.equals("M")) {
                             p.gender = "F";
                         }
-                        if (pp.gender.equals("F"))  {
+                        if (pp.gender.equals("F")) {
                             p.gender = "M";
                         }
-                    }
-                    else if (pp.husbandName != null || pp.husbandId != null) {
+                    } else if (pp.husbandName != null || pp.husbandId != null) {
                         p.gender = "M";
-                    }
-                    else if (pp.wifeName != null || pp.wifeId != null) {
+                    } else if (pp.wifeName != null || pp.wifeId != null) {
                         p.gender = "F";
                     }
                 }
-                else {
-                    p.gender = "M";
-                }
             }
         }
-
-
-        for (var p : id_records.values()) {
-            try {
-                assert p.gender != null && (p.gender.equals("M") || p.gender.equals("F"));
-            } catch (AssertionError e) {
-                System.out.println("This person hasn't gender: " + p);
-            }
-        }
-        System.out.println("Gender assertion finished!");
-    }
-
-    private List<Person> findInRecords(Predicate<Person> pred, Collection<Person> coll) {
-        return coll.
-                parallelStream().
-                filter(pred).
-                collect(Collectors.toList());
     }
 }
