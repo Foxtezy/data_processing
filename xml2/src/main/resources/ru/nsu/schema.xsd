@@ -22,8 +22,8 @@
 
     <xs:complexType name="parents-type">
         <xs:sequence>
-            <xs:element name="mother" type="person-ref" minOccurs="0"/>
-            <xs:element name="father" type="person-ref" minOccurs="0"/>
+            <xs:element name="mother" type="person-ref" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="father" type="person-ref" minOccurs="0" maxOccurs="1"/>
         </xs:sequence>
     </xs:complexType>
 
@@ -44,8 +44,8 @@
     <!-- Person type -->
     <xs:complexType name="person-type">
         <xs:sequence>
-            <xs:element name="wife" type="person-ref" minOccurs="0" />
-            <xs:element name="husband" type="person-ref" minOccurs="0" />
+            <xs:element name="wife" type="person-ref" minOccurs="0" maxOccurs="1"/>
+            <xs:element name="husband" type="person-ref" minOccurs="0" maxOccurs="1"/>
             <xs:element name="parents" type="parents-type" minOccurs="0" maxOccurs="unbounded"/>
             <xs:element name="siblings" type="siblings-type" minOccurs="0" maxOccurs="unbounded"/>
             <xs:element name="children" type="children-type" minOccurs="0" maxOccurs="unbounded"/>

@@ -15,10 +15,14 @@ import javax.xml.validation.SchemaFactory;
 import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class Main {
     private static final Map<String, PersonInfo> parsedData = new HashMap<>();
     private static final Map<String, PersonType> collectedData = new HashMap<>();
+
+    private static final String EMPTY_VALUED_TAG_REGEX = "\\s*<\\s*(\\w+)\\s*></\\s*\\1\\s*>|\\s*<\\s*\\w+\\s*/\\s*>";
 
     public static void main(String[] args) {
         try (FileInputStream fileInput = new FileInputStream("out_people"); ObjectInputStream objectInput = new ObjectInputStream(fileInput)) {
@@ -52,8 +56,17 @@ public class Main {
             File schemaFile = new File("src/main/resources/ru/nsu/schema.xsd");
             writer.setSchema(schemaFactory.newSchema(schemaFile));
             writer.setProperty(Marshaller.JAXB_FORMATTED_OUTPUT, true);
-            writer.marshal(people, new File("src/main/resources/ru/nsu/output.xml"));
-        } catch (JAXBException | SAXException e) {
+
+
+            StringWriter sw = new StringWriter();
+            writer.marshal(people, sw);
+            String result = sw.toString().replaceAll(EMPTY_VALUED_TAG_REGEX, "");
+
+            BufferedWriter w = new BufferedWriter(new FileWriter("src/main/resources/ru/nsu/output.xml"));
+            w.write(result);
+
+
+        } catch (JAXBException | SAXException | IOException e) {
             e.printStackTrace();
         }
     }
