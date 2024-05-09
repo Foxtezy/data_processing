@@ -1,0 +1,59 @@
+plugins {
+	id 'java'
+	id 'org.springframework.boot' version '3.2.5'
+	id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'ru.nsu.makhov'
+version = '0.0.1-SNAPSHOT'
+
+java {
+	sourceCompatibility = '17'
+}
+
+configurations {
+	compileOnly {
+		extendsFrom annotationProcessor
+	}
+}
+
+compileJava {
+	options.compilerArgs += ['-Amapstruct.unmappedTargetPolicy=ERROR', '-Amapstruct.defaultComponentModel=spring']
+}
+
+repositories {
+	mavenCentral()
+}
+
+dependencies {
+	//Spring dependencies
+	implementation 'org.springframework.boot:spring-boot-starter-jdbc:3.1.5'
+	implementation 'org.springframework.boot:spring-boot-starter-aop:3.1.5'
+	implementation 'org.springframework.boot:spring-boot-starter-web:3.1.5'
+	implementation 'org.springframework.boot:spring-boot-starter-webflux:3.1.5'
+	implementation 'org.springframework.boot:spring-boot-starter-validation:3.1.5'
+
+	//Swagger dependencies
+	implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
+
+	//Lombok
+	compileOnly 'org.projectlombok:lombok'
+	annotationProcessor 'org.projectlombok:lombok'
+
+	//MapStruct dependencies
+	implementation 'org.mapstruct:mapstruct:1.5.5.Final'
+	annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
+
+	// JDBI dependencies
+	implementation 'org.jdbi:jdbi3-sqlobject:3.41.3'
+	implementation 'org.jdbi:jdbi3-postgres:3.41.3'
+	implementation 'org.jdbi:jdbi3-spring4:3.19.0'
+
+	//PostgreSQL + Flyway
+	runtimeOnly 'org.postgresql:postgresql:42.6.0'
+	implementation 'org.flywaydb:flyway-core'
+}
+
+tasks.named('test') {
+	useJUnitPlatform()
+}
