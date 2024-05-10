@@ -1,0 +1,14 @@
+version: "3.8"
+services:
+  postgres:
+    image: demo-small:latest
+    restart: on-failure
+    shm_size: 16g
+    mem_limit: 16g
+    container_name: demo-small
+    environment:
+      - POSTGRES_PASSWORD=airflights
+      - POSTGRES_USER=airflights
+      - POSTGRES_DB=demo
+    ports:
+      - "5432:5432"

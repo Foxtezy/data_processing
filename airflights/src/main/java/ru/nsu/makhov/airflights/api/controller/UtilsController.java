@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 import ru.nsu.makhov.airflights.api.ApiPaths;
 import ru.nsu.makhov.airflights.api.dto.AirportDto;
 import ru.nsu.makhov.airflights.api.dto.CityDto;
+import ru.nsu.makhov.airflights.core.repository.UtilsRepository;
 
 import java.util.List;
 
@@ -18,13 +19,15 @@ import java.util.List;
 @RequiredArgsConstructor
 public class UtilsController {
 
+    private final UtilsRepository utilsRepository;
+
     @Operation(summary = "Все доступные города отправления и назначения")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Возвращает все города")
     })
     @GetMapping(ApiPaths.CITY)
     public List<CityDto> getAllCities(){
-        throw new UnsupportedOperationException();
+        return utilsRepository.getAllCities();
     }
 
     @Operation(summary = "Все доступные аэропорты отправления и назначения")
@@ -33,7 +36,7 @@ public class UtilsController {
     })
     @GetMapping(ApiPaths.AIRPORT)
     public List<AirportDto> getAllAirports(){
-        throw new UnsupportedOperationException();
+        return utilsRepository.getAllAirports();
     }
 
     @Operation(summary = "Все доступные аэропорты в городе")
@@ -42,6 +45,6 @@ public class UtilsController {
     })
     @GetMapping(ApiPaths.AIRPORT_IN_CITY)
     public List<AirportDto> getAllAirportsInCity(@PathVariable String city){
-        throw new UnsupportedOperationException();
+        return utilsRepository.getAllAirportsInCity(city);
     }
 }

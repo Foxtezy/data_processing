@@ -1,2 +1,14 @@
 server:
   port: 1447
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/demo
+    username: airflights
+    password: airflights
+    driver-class-name: org.postgresql.Driver
+
+  flyway:
+    url: jdbc:postgresql://localhost:5432/demo
+    user: airflights
+    password: airflights
