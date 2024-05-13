@@ -6,6 +6,7 @@ import org.jdbi.v3.sqlobject.SqlObjectPlugin;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import ru.nsu.makhov.airflights.core.repository.AirportScheduleRepository;
+import ru.nsu.makhov.airflights.core.repository.CheckinRepository;
 import ru.nsu.makhov.airflights.core.repository.UtilsRepository;
 
 import javax.sql.DataSource;
@@ -28,5 +29,10 @@ public class DatabaseConfig {
     @Bean
     public AirportScheduleRepository scheduleRepository(Jdbi jdbi) {
         return jdbi.onDemand(AirportScheduleRepository.class);
+    }
+
+    @Bean
+    public CheckinRepository checkinRepository(Jdbi jdbi) {
+        return jdbi.onDemand(CheckinRepository.class);
     }
 }
