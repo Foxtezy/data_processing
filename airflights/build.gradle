@@ -49,9 +49,8 @@ dependencies {
 	implementation 'org.jdbi:jdbi3-postgres:3.41.3'
 	implementation 'org.jdbi:jdbi3-spring4:3.19.0'
 
-	//PostgreSQL + Flyway
+	//PostgreSQL
 	runtimeOnly 'org.postgresql:postgresql:42.6.0'
-	implementation 'org.flywaydb:flyway-core'
 }
 
 tasks.named('test') {
