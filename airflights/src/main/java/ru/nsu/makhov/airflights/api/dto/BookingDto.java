@@ -5,6 +5,7 @@ import java.util.List;
 public record BookingDto (
     List<Integer> flightIds,
     String passenger,
-    BookingClass bookingClass
+    BookingClass bookingClass,
+    Boolean extraSpace
 ) {
 }
